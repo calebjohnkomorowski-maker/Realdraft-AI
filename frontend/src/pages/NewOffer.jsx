@@ -37,17 +37,21 @@ export default function NewOffer() {
   const goToReview = async () => {
     setPreviewLoading(true)
     try {
-      // Save offer to DB
-      const saved = await offersApi.create(offerData, AGENT_ID)
-      setOfferId(saved.id)
+      // Try to save offer to DB — non-fatal if Supabase isn't configured yet
+      try {
+        const saved = await offersApi.create(offerData, AGENT_ID)
+        setOfferId(saved.id)
+      } catch (dbErr) {
+        console.warn('DB save skipped (Supabase not configured):', dbErr.message)
+      }
 
-      // Generate PDF preview
+      // Generate PDF preview — works with or without DB
       const url = await docsApi.preview(offerData)
       setPdfUrl(url)
       setStep('review')
     } catch (err) {
       console.error(err)
-      alert('Error generating preview: ' + err.message)
+      alert('Error generating PDF preview: ' + err.message)
     } finally {
       setPreviewLoading(false)
     }
