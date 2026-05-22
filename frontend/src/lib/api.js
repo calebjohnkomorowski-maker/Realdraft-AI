@@ -45,8 +45,10 @@ export const documents = {
   },
   generate: (offerId, offerData) =>
     request('/documents/generate', { method: 'POST', body: { offerId, offerData } }),
-  send: (offerId, signers, ccEmails, agentName) =>
-    request('/documents/send', { method: 'POST', body: { offerId, signers, ccEmails, agentName } }),
+  send: (offerId, offerData, signers, ccEmails, agentName, agentEmail, smtpUser, smtpPass, mode = 'email') =>
+    request('/documents/send', { method: 'POST', body: { offerId, offerData, signers, ccEmails, agentName, agentEmail, smtpUser, smtpPass, mode } }),
+  testEmail: (smtpUser, smtpPass) =>
+    request('/documents/test-email', { method: 'POST', body: { smtpUser, smtpPass } }),
 }
 
 // ── Scripts ───────────────────────────────────────────────────────────────────

@@ -1,76 +1,73 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Eye, Phone, Send, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
+import { FileText, Eye, Phone, Send, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import Chat from '@/components/Chat'
+import OfferForm from '@/components/OfferForm'
 import OfferSummary from '@/components/OfferSummary'
 import CallScript from '@/components/CallScript'
 import DocumentSend from '@/components/DocumentSend'
 import { documents as docsApi, offers as offersApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { loadSettings, agentFieldsFromSettings } from '@/lib/useSettings'
 
-const AGENT_ID = 'demo-agent'
-const AGENT_NAME = 'Your Name' // replace with auth session
+const AGENT_ID = 'demo-agent' // replace with auth session
 
 const STEPS = [
-  { id: 'intake', label: 'AI Intake', icon: FileText },
-  { id: 'review', label: 'Review PDF', icon: Eye },
-  { id: 'script', label: 'Call Script', icon: Phone },
-  { id: 'send', label: 'Send Package', icon: Send },
+  { id: 'intake', label: 'Fill Form',     icon: FileText },
+  { id: 'review', label: 'Review PDF',    icon: Eye },
+  { id: 'script', label: 'Call Script',   icon: Phone },
+  { id: 'send',   label: 'Send Package',  icon: Send },
 ]
 
 export default function NewOffer() {
   const navigate = useNavigate()
-  const [step, setStep] = useState('intake')
-  const [offerData, setOfferData] = useState(null)
-  const [offerId, setOfferId] = useState(null)
-  const [pdfUrl, setPdfUrl] = useState(null)
+  const [step, setStep]                   = useState('intake')
+  const [offerData, setOfferData]         = useState(null)
+  const [offerId, setOfferId]             = useState(null)
+  const [pdfUrl, setPdfUrl]               = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
   const stepIndex = STEPS.findIndex(s => s.id === step)
+  const isStepComplete = (id) => STEPS.findIndex(s => s.id === id) < stepIndex
 
-  const handleOfferComplete = async (data, _sessionId) => {
-    setOfferData(data)
-  }
-
-  const goToReview = async () => {
+  // Called when the quick-fill form is submitted
+  const handleFormSubmit = async (data) => {
+    const settings = loadSettings()
+    const merged   = { ...data, ...agentFieldsFromSettings(settings) }
+    setOfferData(merged)
     setPreviewLoading(true)
+
     try {
-      // Try to save offer to DB — non-fatal if Supabase isn't configured yet
+      // Save to DB — non-fatal if Supabase isn't configured
       try {
-        const saved = await offersApi.create(offerData, AGENT_ID)
+        const saved = await offersApi.create(merged, AGENT_ID)
         setOfferId(saved.id)
       } catch (dbErr) {
         console.warn('DB save skipped (Supabase not configured):', dbErr.message)
       }
 
-      // Generate PDF preview — works with or without DB
-      const url = await docsApi.preview(offerData)
+      // Generate the PDF preview and advance to review step
+      const url = await docsApi.preview(merged)
       setPdfUrl(url)
       setStep('review')
     } catch (err) {
       console.error(err)
-      alert('Error generating PDF preview: ' + err.message)
+      alert('Error generating PDF: ' + err.message)
     } finally {
       setPreviewLoading(false)
     }
   }
 
-  const isStepComplete = (id) => {
-    const idx = STEPS.findIndex(s => s.id === id)
-    return idx < stepIndex
-  }
-
   return (
     <div className="flex flex-col h-screen">
-      {/* Step header */}
+
+      {/* ── Step header ─────────────────────────────────────────────────── */}
       <div className="border-b bg-background px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1">
           {STEPS.map((s, i) => {
-            const Icon = s.icon
+            const Icon   = s.icon
             const active = s.id === step
-            const done = isStepComplete(s.id)
+            const done   = isStepComplete(s.id)
             return (
               <div key={s.id} className="flex items-center">
                 <button
@@ -78,15 +75,17 @@ export default function NewOffer() {
                   onClick={() => done && setStep(s.id)}
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                    active && 'bg-primary text-primary-foreground',
-                    done && !active && 'text-muted-foreground hover:text-foreground cursor-pointer',
-                    !done && !active && 'text-muted-foreground/40 cursor-not-allowed'
+                    active           && 'bg-primary text-primary-foreground',
+                    done  && !active && 'text-muted-foreground hover:text-foreground cursor-pointer',
+                    !done && !active && 'text-muted-foreground/40 cursor-not-allowed',
                   )}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {s.label}
                 </button>
-                {i < STEPS.length - 1 && <ChevronRight className="w-3 h-3 text-muted-foreground/40 mx-0.5" />}
+                {i < STEPS.length - 1 && (
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/40 mx-0.5" />
+                )}
               </div>
             )
           })}
@@ -94,40 +93,36 @@ export default function NewOffer() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/')}>← Back to Dashboard</Button>
       </div>
 
-      {/* Content */}
+      {/* ── Content ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden">
 
-        {/* STEP 1: AI Intake */}
+        {/* STEP 1 — Quick-fill form */}
         {step === 'intake' && (
-          <div className="flex h-full">
-            {/* Chat panel */}
-            <div className="flex-1 flex flex-col min-w-0 border-r">
-              <Chat onOfferComplete={handleOfferComplete} />
-            </div>
-            {/* Summary panel */}
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <div className="p-4 border-b bg-muted/30">
-                <h3 className="text-sm font-semibold">Extracted Fields</h3>
-                <p className="text-xs text-muted-foreground">Updates as Claude collects information</p>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3">
-                <OfferSummary offerData={offerData} />
-              </div>
-              {offerData && (
-                <div className="p-4 border-t">
-                  <Button className="w-full" onClick={goToReview} disabled={previewLoading}>
-                    {previewLoading
-                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating PDF…</>
-                      : <><Eye className="w-4 h-4 mr-2" /> Preview & Continue</>
-                    }
-                  </Button>
+          <div className="h-full overflow-y-auto">
+            {previewLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center space-y-3">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
+                  <p className="text-sm text-muted-foreground font-medium">Generating PDF…</p>
+                  <p className="text-xs text-muted-foreground">Filling in all form fields, please wait</p>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto px-4 py-6">
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold">New Offer</h1>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Fill in the details below — click <strong>Generate Offer PDF</strong> when ready.
+                    Your agent info from Settings will be added automatically.
+                  </p>
+                </div>
+                <OfferForm onSubmit={handleFormSubmit} />
+              </div>
+            )}
           </div>
         )}
 
-        {/* STEP 2: Review PDF */}
+        {/* STEP 2 — Review PDF */}
         {step === 'review' && (
           <div className="flex h-full">
             <div className="flex-1 bg-muted/50 flex flex-col">
@@ -163,7 +158,7 @@ export default function NewOffer() {
           </div>
         )}
 
-        {/* STEP 3: Call Script */}
+        {/* STEP 3 — Call Script */}
         {step === 'script' && (
           <div className="flex h-full">
             <div className="flex-1 overflow-y-auto p-6">
@@ -180,12 +175,16 @@ export default function NewOffer() {
           </div>
         )}
 
-        {/* STEP 4: Send Package */}
+        {/* STEP 4 — Send Package */}
         {step === 'send' && (
           <div className="flex h-full">
             <div className="flex-1 overflow-y-auto p-6">
               <div className="max-w-xl mx-auto">
-                <DocumentSend offerData={offerData} offerId={offerId} agentName={AGENT_NAME} />
+                <DocumentSend
+                  offerData={offerData}
+                  offerId={offerId}
+                  agentName={offerData?.agent_name || loadSettings().agentName || 'Your Name'}
+                />
               </div>
             </div>
             <div className="w-80 border-l overflow-y-auto p-3">
@@ -193,6 +192,7 @@ export default function NewOffer() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   )

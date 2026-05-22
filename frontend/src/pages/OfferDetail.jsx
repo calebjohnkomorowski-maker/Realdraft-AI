@@ -9,8 +9,7 @@ import CallScript from '@/components/CallScript'
 import DocumentSend from '@/components/DocumentSend'
 import { offers as offersApi, documents as docsApi } from '@/lib/api'
 import { STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
-
-const AGENT_NAME = 'Your Name'
+import { loadSettings, agentFieldsFromSettings } from '@/lib/useSettings'
 
 export default function OfferDetail() {
   const { id } = useParams()
@@ -28,7 +27,10 @@ export default function OfferDetail() {
     if (pdfUrl) return
     setPdfLoading(true)
     try {
-      const url = await docsApi.preview(offer.fields)
+      // Merge saved agent settings so broker/agent fields appear on the PDF
+      const settings = loadSettings()
+      const enriched = { ...agentFieldsFromSettings(settings), ...(offer.fields || {}) }
+      const url = await docsApi.preview(enriched)
       setPdfUrl(url)
     } catch (err) { console.error(err) }
     finally { setPdfLoading(false) }
@@ -114,7 +116,7 @@ export default function OfferDetail() {
 
       {tab === 'send' && (
         <div className="max-w-xl">
-          <DocumentSend offerData={offerData} offerId={id} agentName={AGENT_NAME} />
+          <DocumentSend offerData={offerData} offerId={id} agentName={offerData.agent_name || loadSettings().agentName || 'Your Name'} />
         </div>
       )}
     </div>
