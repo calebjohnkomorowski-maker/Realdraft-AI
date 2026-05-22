@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment — NEVER commit this
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# PDF templates (add your own PA ASR form — don't commit client docs)
+backend/templates/*.pdf
+
+# DocuSign private key
+backend/docusign_private.pem
+
+# Temp launch scripts (Windows-specific, not needed on Mac)
+start-backend.bat
+start-frontend.bat

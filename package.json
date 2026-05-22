@@ -1,0 +1,12 @@
+{
+  "name": "realdraft-ai",
+  "version": "1.0.0",
+  "description": "RealDraft AI — PA Real Estate Offer Automation",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "start cmd /k npm run dev:backend && start cmd /k npm run dev:frontend",
+    "build": "cd frontend && npm run build"
+  }
+}
