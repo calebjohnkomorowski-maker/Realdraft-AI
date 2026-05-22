@@ -123,14 +123,24 @@ const F = {
   MTG1_RATE:          { pg: 3, x: 82,  y: 374, w: 62 },
   MTG1_RATE_MAX:      { pg: 3, x: 178, y: 352, w: 62 },
 
-  // ── PAGE 6 (Page 7): Inspection contingency period (days after each Elected)
-  INSP_HOME_DAYS:     { pg: 6, x: 36,  y: 376, w: 30 },
+  // ── PAGE 6 (Page 7): Inspection Section 12C
+  // The form prints "Elected ______" and "Waived ______" for each type.
+  // When ELECTED  → write days on the Elected underline (left side, x≈36)
+  // When WAIVED   → write "X"  on the Waived  underline (right side, x≈549)
+  INSP_HOME_DAYS:     { pg: 6, x: 36,  y: 376, w: 30 },   // elected: days
+  INSP_HOME_WAIVE:    { pg: 6, x: 549, y: 376, w: 60 },   // waived:  X
   INSP_WDO_DAYS:      { pg: 6, x: 36,  y: 255, w: 30 },
+  INSP_WDO_WAIVE:     { pg: 6, x: 549, y: 255, w: 60 },
   INSP_WATER_DAYS:    { pg: 6, x: 36,  y: 79,  w: 30 },
+  INSP_WATER_WAIVE:   { pg: 6, x: 549, y: 79,  w: 60 },
 
-  // ── PAGE 7 (Page 8): Inspection contingency period continued
+  // ── PAGE 7 (Page 8): Inspection Section 12C continued
   INSP_RADON_DAYS:    { pg: 7, x: 35,  y: 726, w: 30 },
+  INSP_RADON_WAIVE:   { pg: 7, x: 549, y: 726, w: 60 },
   INSP_SEPTIC_DAYS:   { pg: 7, x: 35,  y: 605, w: 30 },
+  INSP_SEPTIC_WAIVE:  { pg: 7, x: 549, y: 605, w: 60 },
+  INSP_LEAD_DAYS:     { pg: 7, x: 35,  y: 374, w: 30 },
+  INSP_LEAD_WAIVE:    { pg: 7, x: 549, y: 374, w: 60 },
 };
 
 // ── Checkbox coordinate map ───────────────────────────────────────────────────
@@ -175,23 +185,6 @@ const CB = {
   sewer_none:               { pg: 4, x: 79,  y: 328 },
   sewer_none_permit:        { pg: 4, x: 237, y: 328 },
 
-  // PAGE 6 (Page 7) — Inspection elections (Section 12C)
-  // Checkbox box sits ~13 pt left of the label text.
-  // Elected labels: x=40 (pg6) / x=39 (pg7).  Waived labels: x=551 / x=552.
-  insp_home_elect:          { pg: 6, x: 27,  y: 387 },
-  insp_home_waive:          { pg: 6, x: 538, y: 387 },
-  insp_wdo_elect:           { pg: 6, x: 27,  y: 266 },
-  insp_wdo_waive:           { pg: 6, x: 538, y: 266 },
-  insp_water_elect:         { pg: 6, x: 27,  y: 90  },
-  insp_water_waive:         { pg: 6, x: 538, y: 90  },
-
-  // PAGE 7 (Page 8) — More inspection elections
-  insp_radon_elect:         { pg: 7, x: 26,  y: 737 },
-  insp_radon_waive:         { pg: 7, x: 539, y: 737 },
-  insp_septic_elect:        { pg: 7, x: 26,  y: 616 },
-  insp_septic_waive:        { pg: 7, x: 539, y: 616 },
-  insp_lead_elect:          { pg: 7, x: 26,  y: 385 },
-  insp_lead_waive:          { pg: 7, x: 539, y: 385 },
 };
 
 // ── Main form filler ──────────────────────────────────────────────────────────
@@ -391,54 +384,34 @@ async function fillPAAASRForm(offerData) {
   else                                               check('sewer_public');  // default
 
   // ── PAGE 6 + 7: Inspection elections (Section 12C) ─────────────────────
+  // The form prints "Elected ______" and "Waived ______" for each type.
+  // Elected → write days number on the Elected underline.
+  // Waived  → write "X" on the Waived underline.
   const inspDays = String(d.inspection_days || 10);
 
-  // Home/Environmental (mold is included here per the form language)
-  if (d.inspection_home !== 'waive') {
-    check('insp_home_elect');
-    fill('INSP_HOME_DAYS', inspDays);
-  } else {
-    check('insp_home_waive');
-  }
+  // Home/Environmental (mold is included in home per form language)
+  if (d.inspection_home !== 'waive') fill('INSP_HOME_DAYS',   inspDays);
+  else                                fill('INSP_HOME_WAIVE',  'X');
 
   // Radon
-  if (d.inspection_radon !== 'waive') {
-    check('insp_radon_elect');
-    fill('INSP_RADON_DAYS', inspDays);
-  } else {
-    check('insp_radon_waive');
-  }
+  if (d.inspection_radon !== 'waive') fill('INSP_RADON_DAYS',  inspDays);
+  else                                 fill('INSP_RADON_WAIVE', 'X');
 
   // WDO (Wood Destroying Organisms / termite)
-  if (d.inspection_wdo !== 'waive') {
-    check('insp_wdo_elect');
-    fill('INSP_WDO_DAYS', inspDays);
-  } else {
-    check('insp_wdo_waive');
-  }
+  if (d.inspection_wdo !== 'waive') fill('INSP_WDO_DAYS',   inspDays);
+  else                               fill('INSP_WDO_WAIVE',  'X');
 
-  // Water Quality / Well (only shown when water_type is on-site / well)
-  if (d.inspection_water_quality !== 'waive') {
-    check('insp_water_elect');
-    fill('INSP_WATER_DAYS', inspDays);
-  } else {
-    check('insp_water_waive');
-  }
+  // Water Quality / Well
+  if (d.inspection_water_quality !== 'waive') fill('INSP_WATER_DAYS',  inspDays);
+  else                                         fill('INSP_WATER_WAIVE', 'X');
 
-  // Septic (only shown when sewer_type is on-lot / septic)
-  if (d.inspection_septic !== 'waive') {
-    check('insp_septic_elect');
-    fill('INSP_SEPTIC_DAYS', inspDays);
-  } else {
-    check('insp_septic_waive');
-  }
+  // Septic
+  if (d.inspection_septic !== 'waive') fill('INSP_SEPTIC_DAYS',  inspDays);
+  else                                  fill('INSP_SEPTIC_WAIVE', 'X');
 
-  // Lead-Based Paint — auto-elect when property built before 1978
-  if (d.is_pre_1978) {
-    check('insp_lead_elect');
-  } else {
-    check('insp_lead_waive');
-  }
+  // Lead-Based Paint — auto-elect when pre-1978
+  if (d.is_pre_1978) fill('INSP_LEAD_DAYS',  inspDays);
+  else               fill('INSP_LEAD_WAIVE', 'X');
 
   // ── Buyer / Seller initials on every page ──────────────────────────────
   const buyerInitials  = getInitials(d.buyer_name);
