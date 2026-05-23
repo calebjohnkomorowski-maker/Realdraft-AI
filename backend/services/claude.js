@@ -1,6 +1,16 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazy client — reads ANTHROPIC_API_KEY at call time so a missing/rotated key
+// gives a clear error rather than crashing the server on startup.
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'ANTHROPIC_API_KEY is not set. Add it to backend/.env and restart the server.'
+    );
+  }
+  return new Anthropic({ apiKey });
+}
 
 const PA_ASR_SYSTEM_PROMPT = `You are a real estate offer assistant for Pennsylvania transactions. Your job is to extract all fields required by the PA Standard Agreement for Sale of Real Estate (ASR form) from the agent's natural-language description, ask clarifying follow-up questions for anything missing, and when everything is collected, produce a structured JSON object.
 
@@ -128,7 +138,7 @@ GROUP 8 — Addenda (array of strings, include all that apply):
 \`\`\``;
 
 async function processIntakeMessage(messages) {
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: [
@@ -170,7 +180,7 @@ Output exactly this structure (use markdown headers):
 ## Closing & Call to Action
 ## SMS Follow-Up Template`;
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1500,
     messages: [{ role: 'user', content: prompt }],
