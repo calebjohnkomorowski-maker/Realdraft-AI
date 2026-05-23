@@ -151,6 +151,14 @@ export default function OfferForm({ onSubmit }) {
     return Object.keys(e).length === 0
   }
 
+  // Convert "YYYY-MM-DD" (from <input type="date">) to "Month D, YYYY" for the PDF.
+  // Parses as local time so there's no UTC midnight off-by-one-day shift.
+  const fmtDate = (str) => {
+    if (!str) return ''
+    const [y, m, d] = str.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  }
+
   const handleSubmit = () => {
     if (!validate()) {
       document.getElementById('offer-form-top')?.scrollIntoView({ behavior: 'smooth' })
@@ -189,7 +197,13 @@ export default function OfferForm({ onSubmit }) {
       inspection_water_quality: isWell ? form.inspection_water_quality : 'waive',
       included_items,
       excluded_items,
-      agreement_date: form.agreement_date || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      // Format all date fields from YYYY-MM-DD → "Month D, YYYY" for the PDF
+      settlement_date:          fmtDate(form.settlement_date),
+      written_acceptance_date:  fmtDate(form.written_acceptance_date),
+      mortgage_commitment_date: fmtDate(form.mortgage_commitment_date),
+      agreement_date: form.agreement_date
+        ? fmtDate(form.agreement_date)
+        : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     }
 
     onSubmit(offerData)
