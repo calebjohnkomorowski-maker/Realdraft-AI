@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, CheckCircle2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,7 +85,12 @@ function Section({ title, children, defaultOpen = true }) {
   )
 }
 
+// ── Date helpers ──────────────────────────────────────────────────────────────
+const toDateInput = (d) => d.toISOString().split('T')[0]   // "YYYY-MM-DD"
+const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r }
+
 // ── Default form state ────────────────────────────────────────────────────────
+const today = new Date()
 const DEFAULTS = {
   // Property
   property_address: '', property_zip: '', municipality: '', county: '',
@@ -98,14 +103,16 @@ const DEFAULTS = {
   // Financial
   purchase_price_number: '', initial_deposit: '', initial_deposit_days: '5',
   additional_deposit: '', additional_deposit_days: '10',
-  seller_assist: '0', settlement_date: '', written_acceptance_date: '',
+  seller_assist: '', settlement_date: '',
+  written_acceptance_date: toDateInput(addDays(today, 3)),  // 3 days from now
   agreement_date: '',
 
   // Financing
   financing_option: 'conventional',
   mortgage_amount: '', mortgage_type: 'Conventional', mortgage_term: '30',
   mortgage_ltv: '80', mortgage_rate: '', mortgage_rate_max: '',
-  mortgage_lender: '', mortgage_commitment_date: '',
+  mortgage_lender: '',
+  mortgage_commitment_date: toDateInput(addDays(today, 30)), // 30 days from now
 
   // Inspections
   inspection_home: 'elect', inspection_radon: 'elect', inspection_wdo: 'elect',
@@ -132,6 +139,24 @@ export default function OfferForm({ onSubmit }) {
   const [errors, setErrors] = useState({})
 
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }))
+
+  // Auto-calculate mortgage amount when price or LTV changes
+  useEffect(() => {
+    if (form.financing_option === 'cash') return
+    const price = Number(form.purchase_price_number)
+    const ltv   = Number(form.mortgage_ltv) || 80
+    if (price > 0) {
+      setForm(f => ({ ...f, mortgage_amount: String(Math.round(price * ltv / 100)) }))
+    }
+  }, [form.purchase_price_number, form.mortgage_ltv, form.financing_option])
+
+  // Auto-fill initial deposit at 1% of price (only when field is still empty/zero)
+  useEffect(() => {
+    const price = Number(form.purchase_price_number)
+    if (price > 0 && !form.initial_deposit) {
+      setForm(f => ({ ...f, initial_deposit: String(Math.round(price * 0.01)) }))
+    }
+  }, [form.purchase_price_number])
 
   const isCash = form.financing_option === 'cash'
   const isWell  = ['well', 'on-site', 'on_site'].includes(form.water_type)
@@ -296,7 +321,7 @@ export default function OfferForm({ onSubmit }) {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <F label="Initial Deposit ($)">
-            <Input type="number" value={form.initial_deposit} onChange={e => set('initial_deposit')(e.target.value)} placeholder="5000" />
+            <Input type="number" value={form.initial_deposit} onChange={e => set('initial_deposit')(e.target.value)} placeholder="Auto: 1% of price" />
           </F>
           <F label="Due in (days)">
             <Input type="number" value={form.initial_deposit_days} onChange={e => set('initial_deposit_days')(e.target.value)} placeholder="5" />
@@ -335,6 +360,7 @@ export default function OfferForm({ onSubmit }) {
             <div className="grid grid-cols-3 gap-3">
               <F label="Loan Amount ($)">
                 <Input type="number" value={form.mortgage_amount} onChange={e => set('mortgage_amount')(e.target.value)} placeholder="260000" />
+                <p className="text-xs text-muted-foreground mt-0.5">Auto: price × LTV</p>
               </F>
               <Select label="Loan Type" value={form.mortgage_type} onChange={set('mortgage_type')}
                 options={[
