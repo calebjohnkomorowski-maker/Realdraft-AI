@@ -1,41 +1,56 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, Phone, Send, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, Download, Phone, Send, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import OfferSummary from '@/components/OfferSummary'
 import CallScript from '@/components/CallScript'
 import DocumentSend from '@/components/DocumentSend'
 import { offers as offersApi, documents as docsApi } from '@/lib/api'
-import { STATUS_COLORS, STATUS_LABELS } from '@/lib/utils'
+import { STATUS_COLORS, STATUS_LABELS, cn } from '@/lib/utils'
 import { loadSettings, agentFieldsFromSettings } from '@/lib/useSettings'
 
-export default function OfferDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [offer, setOffer] = useState(null)
-  const [tab, setTab] = useState('summary')
-  const [pdfUrl, setPdfUrl] = useState(null)
-  const [pdfLoading, setPdfLoading] = useState(false)
+const TABS = [
+  { id: 'pdf',    label: 'PDF Preview', icon: FileText },
+  { id: 'script', label: 'Call Script', icon: Phone },
+  { id: 'send',   label: 'Send Package', icon: Send },
+]
 
+export default function OfferDetail() {
+  const { id }     = useParams()
+  const navigate   = useNavigate()
+  const [offer, setOffer]         = useState(null)
+  const [tab, setTab]             = useState('pdf')
+  const [pdfUrl, setPdfUrl]       = useState(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError]   = useState('')
+
+  // Load offer then immediately kick off PDF generation
   useEffect(() => {
-    offersApi.get(id).then(setOffer).catch(console.error)
+    offersApi.get(id)
+      .then(data => {
+        setOffer(data)
+        generatePdf(data)
+      })
+      .catch(err => console.error('Failed to load offer:', err))
   }, [id])
 
-  const loadPdf = async () => {
-    if (pdfUrl) return
+  const generatePdf = async (data) => {
     setPdfLoading(true)
+    setPdfError('')
     try {
-      // Merge saved agent settings so broker/agent fields appear on the PDF
-      const settings = loadSettings()
-      const enriched = { ...agentFieldsFromSettings(settings), ...(offer.fields || {}) }
+      const settings  = loadSettings()
+      const enriched  = { ...agentFieldsFromSettings(settings), ...(data.fields || {}) }
       const url = await docsApi.preview(enriched)
       setPdfUrl(url)
-    } catch (err) { console.error(err) }
-    finally { setPdfLoading(false) }
+    } catch (err) {
+      setPdfError(err.message)
+    } finally {
+      setPdfLoading(false)
+    }
   }
 
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (!offer) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -43,82 +58,144 @@ export default function OfferDetail() {
   )
 
   const offerData = offer.fields || {}
-  const address = offer.properties?.address || offerData.property_address || 'Offer'
-  const status = offer.status || 'draft'
-
-  const TABS = [
-    { id: 'summary', label: 'Summary' },
-    { id: 'pdf', label: 'PDF Preview' },
-    { id: 'script', label: 'Call Script' },
-    { id: 'send', label: 'Send Package' },
-  ]
+  const address   = offer.properties?.address || offerData.property_address || 'Offer'
+  const status    = offer.status || 'draft'
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-          <ArrowLeft className="w-4 h-4" />
+    <div className="flex flex-col h-screen">
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="border-b bg-background px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/')}>
+          <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
         </Button>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold truncate">{address}</h1>
-            <Badge className={`${STATUS_COLORS[status]} text-xs`}>{STATUS_LABELS[status]}</Badge>
+            <h1 className="font-semibold text-sm truncate">{address}</h1>
+            <Badge className={`${STATUS_COLORS[status]} text-xs`}>
+              {STATUS_LABELS[status]}
+            </Badge>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Buyer: {offerData.buyer_name} · Seller: {offerData.seller_name}
+          <p className="text-xs text-muted-foreground truncate">
+            {offerData.buyer_name && `Buyer: ${offerData.buyer_name}`}
+            {offerData.buyer_name && offerData.seller_name && ' · '}
+            {offerData.seller_name && `Seller: ${offerData.seller_name}`}
           </p>
         </div>
-      </div>
 
-      {/* Tab Bar */}
-      <div className="flex gap-1 border-b pb-0">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => { setTab(t.id); if (t.id === 'pdf') loadPdf() }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      {tab === 'summary' && (
-        <div className="max-w-lg">
-          <OfferSummary offerData={offerData} />
+        {/* Tab pills in header */}
+        <div className="flex items-center gap-1">
+          {TABS.map(t => {
+            const Icon = t.icon
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  tab === t.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            )
+          })}
         </div>
-      )}
+      </div>
 
-      {tab === 'pdf' && (
-        <div className="border rounded-lg overflow-hidden" style={{ height: '70vh' }}>
-          {pdfLoading && (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      {/* ── Content ───────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-hidden flex">
+
+        {/* ── PDF Preview ─────────────────────────────────────────────────── */}
+        {tab === 'pdf' && (
+          <>
+            <div className="flex-1 bg-muted/50 flex flex-col">
+              <div className="p-2 border-b bg-background flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">PA ASR Form</span>
+                {pdfUrl && (
+                  <a href={pdfUrl} download={`offer-${address.replace(/\s+/g, '-')}.pdf`}>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                      <Download className="w-3 h-3" /> Download PDF
+                    </Button>
+                  </a>
+                )}
+              </div>
+
+              {pdfLoading && (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+                    <p className="text-sm text-muted-foreground">Generating PDF…</p>
+                  </div>
+                </div>
+              )}
+              {pdfError && (
+                <div className="flex-1 flex items-center justify-center p-8 text-center text-destructive text-sm">
+                  Failed to generate PDF: {pdfError}
+                </div>
+              )}
+              {pdfUrl && !pdfLoading && (
+                <iframe src={pdfUrl} className="flex-1 w-full" title="PDF Preview" />
+              )}
             </div>
-          )}
-          {pdfUrl && !pdfLoading && (
-            <iframe src={pdfUrl} className="w-full h-full" title="PDF Preview" />
-          )}
-        </div>
-      )}
 
-      {tab === 'script' && (
-        <div className="max-w-2xl">
-          <CallScript offerData={offerData} offerId={id} />
-        </div>
-      )}
+            {/* Sidebar */}
+            <div className="w-80 border-l flex flex-col flex-shrink-0">
+              <div className="flex-1 overflow-y-auto p-3">
+                <OfferSummary offerData={offerData} />
+              </div>
+              <div className="p-4 border-t space-y-2">
+                <Button className="w-full" onClick={() => setTab('send')}>
+                  <Send className="w-4 h-4 mr-2" /> Send Package
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setTab('script')}>
+                  <Phone className="w-4 h-4 mr-2" /> Generate Call Script
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
 
-      {tab === 'send' && (
-        <div className="max-w-xl">
-          <DocumentSend offerData={offerData} offerId={id} agentName={offerData.agent_name || loadSettings().agentName || 'Your Name'} />
-        </div>
-      )}
+        {/* ── Call Script ─────────────────────────────────────────────────── */}
+        {tab === 'script' && (
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-2xl mx-auto space-y-4">
+                <CallScript offerData={offerData} offerId={id} />
+                <Button className="w-full" onClick={() => setTab('send')}>
+                  <Send className="w-4 h-4 mr-2" /> Continue to Send Package
+                </Button>
+              </div>
+            </div>
+            <div className="w-80 border-l overflow-y-auto p-3">
+              <OfferSummary offerData={offerData} />
+            </div>
+          </div>
+        )}
+
+        {/* ── Send Package ─────────────────────────────────────────────────── */}
+        {tab === 'send' && (
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-xl mx-auto">
+                <DocumentSend
+                  offerData={offerData}
+                  offerId={id}
+                  agentName={offerData.agent_name || loadSettings().agentName || 'Your Name'}
+                />
+              </div>
+            </div>
+            <div className="w-80 border-l overflow-y-auto p-3">
+              <OfferSummary offerData={offerData} />
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }
