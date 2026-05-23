@@ -1,11 +1,11 @@
-import { Save, CheckCircle2, User, Building2, Mail, Shield, Wifi, XCircle } from 'lucide-react'
+import { Save, CheckCircle2, User, Building2, Mail, Shield, Wifi, XCircle, Webhook, Copy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useSettings } from '@/lib/useSettings'
 import { documents } from '@/lib/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function Field({ label, type = 'text', value, onChange, placeholder }) {
   return (
@@ -33,6 +33,15 @@ export default function Settings() {
       setEmailTest('fail')
       setEmailErr(e.message)
     }
+  }
+
+  const [copied, setCopied] = useState(false)
+  const webhookUrl = `${window.location.protocol}//${window.location.hostname}:3001/api/webhooks/hellosign`
+
+  const copyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const set = (key) => (val) => setSettings({ [key]: val })
@@ -164,6 +173,43 @@ export default function Settings() {
                 <option value="simultaneous">Simultaneous</option>
               </select>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Webhook ───────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Webhook className="w-4 h-4" /> Dropbox Sign Webhook
+          </CardTitle>
+          <CardDescription>
+            Paste this URL into your Dropbox Sign account so offer statuses update automatically when signers sign.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-muted rounded px-3 py-2 truncate select-all">
+              {webhookUrl}
+            </code>
+            <button
+              onClick={copyWebhook}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium hover:bg-muted transition-colors"
+            >
+              {copied ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+            </button>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>In Dropbox Sign: <strong>API</strong> → <strong>API Settings</strong> → <strong>Event Callbacks</strong> → paste the URL above.</p>
+            <p>For local dev, expose port 3001 first: <code className="bg-muted px-1 rounded">ngrok http 3001</code> and use the ngrok URL instead.</p>
+          </div>
+          <div className="text-xs space-y-0.5">
+            <p className="font-medium text-muted-foreground">Events that update offer status:</p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+              <li><code className="bg-muted px-1 rounded">signature_request_signed</code> → Partially Signed</li>
+              <li><code className="bg-muted px-1 rounded">signature_request_all_signed</code> → ✓ Executed</li>
+              <li><code className="bg-muted px-1 rounded">signature_request_declined</code> → Declined</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

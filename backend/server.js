@@ -5,11 +5,12 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
-const chatRoutes = require('./routes/chat');
-const offerRoutes = require('./routes/offers');
-const documentRoutes = require('./routes/documents');
-const clientRoutes = require('./routes/clients');
-const scriptRoutes = require('./routes/scripts');
+const chatRoutes    = require('./routes/chat');
+const offerRoutes   = require('./routes/offers');
+const documentRoutes= require('./routes/documents');
+const clientRoutes  = require('./routes/clients');
+const scriptRoutes  = require('./routes/scripts');
+const webhookRoutes = require('./routes/webhooks');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,11 +26,12 @@ app.use(express.json({ limit: '10mb' }));
 const limiter = rateLimit({ windowMs: 60_000, max: 100 });
 app.use('/api/', limiter);
 
-app.use('/api/chat', chatRoutes);
-app.use('/api/offers', offerRoutes);
+app.use('/api/chat',      chatRoutes);
+app.use('/api/offers',    offerRoutes);
 app.use('/api/documents', documentRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/scripts', scriptRoutes);
+app.use('/api/clients',   clientRoutes);
+app.use('/api/scripts',   scriptRoutes);
+app.use('/api/webhooks',  webhookRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

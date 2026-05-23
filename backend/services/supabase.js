@@ -53,6 +53,22 @@ async function getOffer(id) {
   return data;
 }
 
+async function updateOfferByEnvelope(envelopeId, data) {
+  if (!supabase) {
+    const offer = memStore.offers.find(o => o.envelope_id === envelopeId);
+    if (offer) Object.assign(offer, data);
+    return offer || null;
+  }
+  const { data: offer, error } = await supabase
+    .from('offers')
+    .update(data)
+    .eq('envelope_id', envelopeId)
+    .select()
+    .single();
+  if (error) throw error;
+  return offer;
+}
+
 async function listOffers(agentId, { status, limit = 50, offset = 0 } = {}) {
   if (!supabase) {
     let results = memStore.offers.filter(o => o.agent_id === agentId);
@@ -172,7 +188,7 @@ async function getAgent(id) {
 }
 
 module.exports = {
-  createOffer, updateOffer, getOffer, listOffers,
+  createOffer, updateOffer, updateOfferByEnvelope, getOffer, listOffers,
   upsertClient, listClients,
   upsertProperty,
   createDocument, updateDocument, uploadPDF,

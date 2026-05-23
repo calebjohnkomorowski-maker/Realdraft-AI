@@ -43,17 +43,21 @@ export function formatDate(dateStr) {
 }
 
 export const STATUS_COLORS = {
-  draft: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  sent: 'bg-blue-100 text-blue-800 border-blue-200',
+  draft:             'bg-yellow-100 text-yellow-800 border-yellow-200',
+  sent:              'bg-blue-100 text-blue-800 border-blue-200',
   pending_signature: 'bg-purple-100 text-purple-800 border-purple-200',
-  executed: 'bg-green-100 text-green-800 border-green-200',
-  cancelled: 'bg-red-100 text-red-800 border-red-200',
+  partially_signed:  'bg-indigo-100 text-indigo-800 border-indigo-200',
+  executed:          'bg-green-100 text-green-800 border-green-200',
+  declined:          'bg-orange-100 text-orange-800 border-orange-200',
+  cancelled:         'bg-red-100 text-red-800 border-red-200',
 }
 
 export const STATUS_LABELS = {
-  draft: 'Draft',
-  sent: 'Sent',
+  draft:             'Draft',
+  sent:              'Sent',
   pending_signature: 'Pending Signature',
-  executed: 'Executed',
-  cancelled: 'Cancelled',
+  partially_signed:  'Partially Signed',
+  executed:          '✓ Executed',
+  declined:          'Declined',
+  cancelled:         'Cancelled',
 }
