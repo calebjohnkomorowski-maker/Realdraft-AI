@@ -28,6 +28,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/new-offer" element={<FullScreen><NewOffer /></FullScreen>} />
+        <Route path="/offers/:id/edit" element={<FullScreen><NewOffer /></FullScreen>} />
         <Route path="*" element={
           <WithSidebar>
             <Routes>

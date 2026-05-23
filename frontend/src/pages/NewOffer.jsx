@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { FileText, Eye, Phone, Send, ChevronRight, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { FileText, Eye, Phone, Send, ChevronRight, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import OfferForm from '@/components/OfferForm'
 import OfferSummary from '@/components/OfferSummary'
@@ -13,24 +13,37 @@ import { loadSettings, agentFieldsFromSettings } from '@/lib/useSettings'
 const AGENT_ID = 'demo-agent' // replace with auth session
 
 const STEPS = [
-  { id: 'intake', label: 'Fill Form',     icon: FileText },
-  { id: 'review', label: 'Review PDF',    icon: Eye },
-  { id: 'script', label: 'Call Script',   icon: Phone },
-  { id: 'send',   label: 'Send Package',  icon: Send },
+  { id: 'intake', label: 'Fill Form',    icon: FileText },
+  { id: 'review', label: 'Review PDF',   icon: Eye },
+  { id: 'script', label: 'Call Script',  icon: Phone },
+  { id: 'send',   label: 'Send Package', icon: Send },
 ]
 
 export default function NewOffer() {
-  const navigate = useNavigate()
-  const [step, setStep]                   = useState('intake')
-  const [offerData, setOfferData]         = useState(null)
-  const [offerId, setOfferId]             = useState(null)
-  const [pdfUrl, setPdfUrl]               = useState(null)
+  const navigate  = useNavigate()
+  const { id: editId } = useParams()          // present on /offers/:id/edit
+  const isEditing = !!editId
+
+  const [step, setStep]                     = useState('intake')
+  const [offerData, setOfferData]           = useState(null)
+  const [offerId, setOfferId]               = useState(editId || null)
+  const [existingFields, setExistingFields] = useState(null)  // pre-fill for edit mode
+  const [loadingOffer, setLoadingOffer]     = useState(isEditing)
+  const [pdfUrl, setPdfUrl]                 = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
-  const stepIndex = STEPS.findIndex(s => s.id === step)
+  const stepIndex      = STEPS.findIndex(s => s.id === step)
   const isStepComplete = (id) => STEPS.findIndex(s => s.id === id) < stepIndex
 
-  // Called when the quick-fill form is submitted
+  // Edit mode — fetch existing offer and pre-fill the form
+  useEffect(() => {
+    if (!isEditing) return
+    offersApi.get(editId)
+      .then(offer => setExistingFields(offer.fields || {}))
+      .catch(err  => { console.error('Failed to load offer:', err); alert('Could not load offer.') })
+      .finally(() => setLoadingOffer(false))
+  }, [editId])
+
   const handleFormSubmit = async (data) => {
     const settings = loadSettings()
     const merged   = { ...data, ...agentFieldsFromSettings(settings) }
@@ -38,15 +51,18 @@ export default function NewOffer() {
     setPreviewLoading(true)
 
     try {
-      // Save to DB — non-fatal if Supabase isn't configured
+      // Save / update in DB — non-fatal if Supabase isn't configured
       try {
-        const saved = await offersApi.create(merged, AGENT_ID)
-        setOfferId(saved.id)
+        if (isEditing && offerId) {
+          await offersApi.update(offerId, { fields: merged })
+        } else {
+          const saved = await offersApi.create(merged, AGENT_ID)
+          setOfferId(saved.id)
+        }
       } catch (dbErr) {
-        console.warn('DB save skipped (Supabase not configured):', dbErr.message)
+        console.warn('DB save skipped:', dbErr.message)
       }
 
-      // Generate the PDF preview and advance to review step
       const url = await docsApi.preview(merged)
       setPdfUrl(url)
       setStep('review')
@@ -58,10 +74,22 @@ export default function NewOffer() {
     }
   }
 
+  // Loading spinner while fetching existing offer
+  if (loadingOffer) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading offer…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen">
 
-      {/* ── Step header ─────────────────────────────────────────────────── */}
+      {/* ── Step header ───────────────────────────────────────────────────── */}
       <div className="border-b bg-background px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-1">
           {STEPS.map((s, i) => {
@@ -90,13 +118,15 @@ export default function NewOffer() {
             )
           })}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/')}>← Back to Dashboard</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(isEditing ? `/offers/${editId}` : '/')}>
+          ← {isEditing ? 'Back to Offer' : 'Back to Dashboard'}
+        </Button>
       </div>
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
+      {/* ── Content ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden">
 
-        {/* STEP 1 — Quick-fill form */}
+        {/* STEP 1 — Form */}
         {step === 'intake' && (
           <div className="h-full overflow-y-auto">
             {previewLoading ? (
@@ -110,13 +140,22 @@ export default function NewOffer() {
             ) : (
               <div className="max-w-3xl mx-auto px-4 py-6">
                 <div className="mb-6">
-                  <h1 className="text-2xl font-bold">New Offer</h1>
+                  <div className="flex items-center gap-2">
+                    {isEditing && <Pencil className="w-5 h-5 text-primary" />}
+                    <h1 className="text-2xl font-bold">{isEditing ? 'Edit Offer' : 'New Offer'}</h1>
+                  </div>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Fill in the details below — click <strong>Generate Offer PDF</strong> when ready.
-                    Your agent info from Settings will be added automatically.
+                    {isEditing
+                      ? 'Update the details below and click Regenerate PDF to apply changes.'
+                      : 'Fill in the details below — click Generate Offer PDF when ready.'
+                    }
                   </p>
                 </div>
-                <OfferForm onSubmit={handleFormSubmit} />
+                <OfferForm
+                  onSubmit={handleFormSubmit}
+                  initialValues={existingFields}
+                  submitLabel={isEditing ? 'Regenerate PDF' : 'Generate Offer PDF'}
+                />
               </div>
             )}
           </div>
@@ -128,11 +167,16 @@ export default function NewOffer() {
             <div className="flex-1 bg-muted/50 flex flex-col">
               <div className="p-3 border-b bg-background flex items-center justify-between">
                 <span className="text-sm font-medium">PA ASR Form Preview</span>
-                {pdfUrl && (
-                  <a href={pdfUrl} download="offer-preview.pdf">
-                    <Button variant="outline" size="sm">Download PDF</Button>
-                  </a>
-                )}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setStep('intake')}>
+                    <Pencil className="w-3 h-3 mr-1.5" /> Edit
+                  </Button>
+                  {pdfUrl && (
+                    <a href={pdfUrl} download="offer-preview.pdf">
+                      <Button variant="outline" size="sm">Download PDF</Button>
+                    </a>
+                  )}
+                </div>
               </div>
               {pdfUrl ? (
                 <iframe src={pdfUrl} className="flex-1 w-full" title="PDF Preview" />

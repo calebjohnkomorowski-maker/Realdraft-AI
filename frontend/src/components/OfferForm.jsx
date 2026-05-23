@@ -89,6 +89,53 @@ function Section({ title, children, defaultOpen = true }) {
 const toDateInput = (d) => d.toISOString().split('T')[0]   // "YYYY-MM-DD"
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r }
 
+// Convert stored "Month D, YYYY" back to "YYYY-MM-DD" for <input type="date">
+const parseLongDate = (str) => {
+  if (!str) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str   // already correct format
+  const d = new Date(str)
+  if (isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Build initial form state from existing offer fields (edit mode)
+function buildInitialState(iv) {
+  if (!iv) return { form: DEFAULTS, checked: {} }
+  const allIncluded = Array.isArray(iv.included_items) ? iv.included_items : []
+  const checkedItems = {}
+  const extraItems   = []
+  allIncluded.forEach(item => {
+    if (STANDARD_INCLUSIONS.includes(item)) checkedItems[item] = true
+    else extraItems.push(item)
+  })
+  const form = {
+    ...DEFAULTS,
+    ...iv,
+    // Numbers → strings for controlled inputs
+    purchase_price_number:  String(iv.purchase_price_number  ?? ''),
+    initial_deposit:        String(iv.initial_deposit        ?? ''),
+    initial_deposit_days:   String(iv.initial_deposit_days   ?? '5'),
+    additional_deposit:     String(iv.additional_deposit     ?? ''),
+    additional_deposit_days:String(iv.additional_deposit_days?? '10'),
+    seller_assist:          String(iv.seller_assist          ?? ''),
+    mortgage_amount:        String(iv.mortgage_amount        ?? ''),
+    mortgage_term:          String(iv.mortgage_term          ?? '30'),
+    mortgage_ltv:           String(iv.mortgage_ltv           ?? '80'),
+    mortgage_rate:          String(iv.mortgage_rate          ?? ''),
+    mortgage_rate_max:      String(iv.mortgage_rate_max      ?? ''),
+    inspection_days:        String(iv.inspection_days        ?? '10'),
+    // Long dates → YYYY-MM-DD
+    settlement_date:          parseLongDate(iv.settlement_date),
+    written_acceptance_date:  parseLongDate(iv.written_acceptance_date),
+    mortgage_commitment_date: parseLongDate(iv.mortgage_commitment_date),
+    agreement_date:           parseLongDate(iv.agreement_date),
+    // Inclusions
+    included_items_text: extraItems.join(', '),
+    excluded_items_text: Array.isArray(iv.excluded_items) ? iv.excluded_items.join(', ') : '',
+  }
+  return { form, checked: checkedItems }
+}
+
 // ── Default form state ────────────────────────────────────────────────────────
 const today = new Date()
 const DEFAULTS = {
@@ -133,9 +180,10 @@ const STANDARD_INCLUSIONS = [
 ]
 
 // ── Main Form Component ───────────────────────────────────────────────────────
-export default function OfferForm({ onSubmit }) {
-  const [form, setForm] = useState(DEFAULTS)
-  const [checked, setChecked] = useState({})   // standard inclusions checkboxes
+export default function OfferForm({ onSubmit, initialValues, submitLabel }) {
+  const init = buildInitialState(initialValues)
+  const [form, setForm] = useState(init.form)
+  const [checked, setChecked] = useState(init.checked)
   const [errors, setErrors] = useState({})
 
   const set = (key) => (val) => setForm(f => ({ ...f, [key]: val }))
@@ -467,7 +515,7 @@ export default function OfferForm({ onSubmit }) {
 
       <Button onClick={handleSubmit} size="lg" className="w-full">
         <FileText className="w-4 h-4 mr-2" />
-        Generate Offer PDF
+        {submitLabel || 'Generate Offer PDF'}
       </Button>
     </div>
   )

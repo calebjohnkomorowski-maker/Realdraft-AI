@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Download, Phone, Send, Loader2, FileText } from 'lucide-react'
+import { ArrowLeft, Download, Phone, Send, Loader2, FileText, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import OfferSummary from '@/components/OfferSummary'
@@ -68,6 +68,9 @@ export default function OfferDetail() {
       <div className="border-b bg-background px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate('/')}>
           <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate(`/offers/${id}/edit`)}>
+          <Pencil className="w-3.5 h-3.5" /> Edit Offer
         </Button>
 
         <div className="flex-1 min-w-0">
