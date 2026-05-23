@@ -88,6 +88,7 @@ router.post('/send', async (req, res, next) => {
     }
 
     // ── E-sign mode ──────────────────────────────────────────────────────
+    // HelloSign / Dropbox Sign emails signers directly — no SMTP needed here.
     const subject  = `Agreement for Sale — ${address}`;
     const envelope = await createSigningEnvelope({
       pdfBytes, signers, subject,
@@ -97,18 +98,19 @@ router.post('/send', async (req, res, next) => {
 
     if (offerId) await db.updateOffer(offerId, { status: 'sent', envelope_id: envelope.envelopeId });
 
+    // Optional SMS notification (non-fatal)
     for (const signer of signers) {
-      const signingUrl = envelope.signingUrls?.find(u => u.email === signer.email)?.url || '';
-      if (signer.email) {
-        await sendOfferSigningRequest({ to: signer.email, clientName: signer.name, agentName, agentEmail, address, signingUrl, smtpUser, smtpPass });
-      }
       if (signer.phone) {
         try { await sendOfferReadySMS({ to: signer.phone, clientName: signer.name, agentName, address }); }
         catch (smsErr) { console.warn('[SMS] skipping:', smsErr.message); }
       }
     }
 
-    res.json({ ok: true, mode: 'esign', envelopeId: envelope.envelopeId });
+    res.json({
+      ok: true, mode: 'esign',
+      envelopeId: envelope.envelopeId,
+      sentTo: signers.map(s => s.email).filter(Boolean),
+    });
   } catch (err) { next(err); }
 });
 

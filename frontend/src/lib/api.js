@@ -13,6 +13,11 @@ async function request(path, options = {}) {
   return res.json()
 }
 
+// ── Config ───────────────────────────────────────────────────────────────────
+export const config = {
+  get: () => request('/config'),
+}
+
 // ── Chat ─────────────────────────────────────────────────────────────────────
 export const chat = {
   intake: (sessionId, message) =>

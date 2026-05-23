@@ -33,6 +33,19 @@ app.use('/api/scripts', scriptRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// Feature-flag endpoint — tells the frontend which services are configured
+app.get('/api/config', (req, res) => {
+  const provider = process.env.ESIGN_PROVIDER || 'hellosign';
+  const esignConfigured =
+    (provider === 'hellosign' && !!process.env.HELLOSIGN_API_KEY && process.env.HELLOSIGN_API_KEY !== '...') ||
+    (provider === 'docusign'  && !!process.env.DOCUSIGN_ACCOUNT_ID);
+  res.json({
+    esign: esignConfigured,
+    esignProvider: esignConfigured ? provider : null,
+    sms: !!(process.env.TWILIO_ACCOUNT_SID && !process.env.TWILIO_ACCOUNT_SID.startsWith('AC...')),
+  });
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
