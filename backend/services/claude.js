@@ -212,8 +212,11 @@ Use exactly these field names and value rules:
   "excluded_items_text": "comma-separated exclusions exactly as written on the sheet",
   "is_pre_1978": true if year built < 1978 else false,
   "listing_agent_name": "listing agent full name",
-  "listing_agent_phone": "listing agent phone number",
-  "listing_agent_email": "listing agent email address"
+  "listing_agent_phone": "listing agent direct phone number",
+  "listing_agent_email": "listing agent email address",
+  "listing_office_name": "listing brokerage / office name",
+  "listing_office_phone": "listing office main phone number",
+  "listing_office_license": "listing office / broker license number"
 }
 
 For any field not found in the document use: "" for strings, 0 for numbers, false for booleans.`;

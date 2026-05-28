@@ -169,6 +169,10 @@ const DEFAULTS = {
   // Utilities
   water_type: 'public', sewer_type: 'public',
 
+  // Listing Agent (auto-filled from MLS)
+  listing_agent_name: '', listing_agent_phone: '', listing_agent_email: '',
+  listing_office_name: '', listing_office_phone: '', listing_office_license: '',
+
   // Inclusions
   included_items_text: '', excluded_items_text: '',
   is_pre_1978: false,
@@ -340,6 +344,28 @@ export default function OfferForm({ onSubmit, initialValues, submitLabel }) {
             onChange={set('seller_email')} placeholder="seller@email.com" />
           <TextInput label="Seller Phone" type="tel" value={form.seller_phone}
             onChange={set('seller_phone')} placeholder="(412) 555-0200" />
+        </div>
+        {/* Listing Agent */}
+        <div className="pt-2 border-t space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Listing Agent / Seller's Broker
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <TextInput label="Agent Name" value={form.listing_agent_name}
+              onChange={set('listing_agent_name')} placeholder="William Cochrane" />
+            <TextInput label="Agent Phone" type="tel" value={form.listing_agent_phone}
+              onChange={set('listing_agent_phone')} placeholder="(610) 476-4779" />
+            <TextInput label="Agent Email" type="email" value={form.listing_agent_email}
+              onChange={set('listing_agent_email')} placeholder="agent@brokerage.com" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <TextInput label="Brokerage Name" value={form.listing_office_name}
+              onChange={set('listing_office_name')} placeholder="James A Cochrane Inc" />
+            <TextInput label="Brokerage Phone" type="tel" value={form.listing_office_phone}
+              onChange={set('listing_office_phone')} placeholder="(610) 469-6100" />
+            <TextInput label="Broker License #" value={form.listing_office_license}
+              onChange={set('listing_office_license')} placeholder="RB060005C" />
+          </div>
         </div>
       </Section>
 
