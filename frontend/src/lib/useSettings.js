@@ -51,7 +51,8 @@ export function agentFieldsFromSettings(settings) {
   return {
     agent_name:     settings.agentName,
     agent_license:  settings.licenseNumber,
-    agent_phone:    settings.agentPhone || settings.agentCell,
+    agent_phone:    settings.agentPhone,
+    agent_cell:     settings.agentCell,
     agent_email:    settings.agentEmail,
     broker_name:    settings.brokerage,
     broker_license: settings.brokerLicense,

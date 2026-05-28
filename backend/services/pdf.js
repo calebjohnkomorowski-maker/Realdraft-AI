@@ -239,25 +239,39 @@ async function fillPAAASRForm(offerData) {
     if (rest.length) fill('SELLER_ADDR2', rest.join(',').trim());
   }
 
-  // Buyer Licensee info (agent representing buyer)
-  fill('B_LIC_NAME1',  d.buyer_agent_name || d.agent_name);
-  fill('B_LIC_NUM',    d.buyer_agent_license || d.agent_license);
-  fill('B_LIC_PHONE',  d.buyer_agent_phone  || d.agent_phone);
-  fill('B_LIC_EMAIL',  d.buyer_agent_email  || d.agent_email);
+  // ── Buyer Licensee (the agent submitting this offer) ─────────────────────
+  fill('B_LIC_NAME1',  d.agent_name);
+  fill('B_LIC_NUM',    d.agent_license);
+  fill('B_LIC_PHONE',  d.agent_phone);
+  fill('B_LIC_CELL',   d.agent_cell);
+  fill('B_LIC_EMAIL',  d.agent_email);
 
-  // Seller Licensee info (listing agent)
-  fill('S_LIC_NAME1',  d.seller_agent_name  || d.agent_name);
-  fill('S_LIC_NUM',    d.seller_agent_license|| d.agent_license);
-  fill('S_LIC_PHONE',  d.seller_agent_phone  || d.agent_phone);
-  fill('S_LIC_EMAIL',  d.seller_agent_email  || d.agent_email);
+  // ── Buyer Broker (agent's own brokerage from Settings) ───────────────────
+  fill('B_BRK_NAME1',  d.broker_name);
+  fill('B_BRK_LIC',    d.broker_license);
+  fill('B_BRK_PHONE',  d.broker_phone);
+  fill('B_BRK_FAX',    d.broker_fax);
+  // Split broker address into two lines at the first comma
+  if (d.broker_address) {
+    const commaIdx = d.broker_address.indexOf(',');
+    if (commaIdx !== -1) {
+      fill('B_BRK_ADDR1', d.broker_address.slice(0, commaIdx).trim());
+      fill('B_BRK_ADDR2', d.broker_address.slice(commaIdx + 1).trim());
+    } else {
+      fill('B_BRK_ADDR1', d.broker_address);
+    }
+  }
 
-  // Buyer Broker (company)
-  fill('B_BRK_NAME1',  d.buyer_brokerage    || d.broker_name);
-  fill('B_BRK_PHONE',  d.buyer_broker_phone || d.broker_phone);
+  // ── Seller Licensee (listing agent from MLS) ─────────────────────────────
+  fill('S_LIC_NAME1',  d.listing_agent_name);
+  fill('S_LIC_NUM',    d.listing_agent_license || '');
+  fill('S_LIC_PHONE',  d.listing_agent_phone);
+  fill('S_LIC_EMAIL',  d.listing_agent_email);
 
-  // Seller Broker (company)
-  fill('S_BRK_NAME1',  d.seller_brokerage   || d.broker_name);
-  fill('S_BRK_PHONE',  d.seller_broker_phone|| d.broker_phone);
+  // ── Seller Broker (listing office from MLS) ───────────────────────────────
+  fill('S_BRK_NAME1',  d.listing_office_name);
+  fill('S_BRK_LIC',    d.listing_office_license);
+  fill('S_BRK_PHONE',  d.listing_office_phone);
 
   // Agency checkboxes — default: seller agent for listing agent,
   // buyer agent for buyer's agent (most common scenario)
