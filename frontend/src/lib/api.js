@@ -54,6 +54,16 @@ export const documents = {
     request('/documents/send', { method: 'POST', body: { offerId, offerData, signers, ccEmails, agentName, agentEmail, smtpUser, smtpPass, mode } }),
   testEmail: (smtpUser, smtpPass) =>
     request('/documents/test-email', { method: 'POST', body: { smtpUser, smtpPass } }),
+  parseMLS: async (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${BASE}/documents/parse-mls`, { method: 'POST', body: form })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }))
+      throw new Error(err.error || 'MLS parse failed')
+    }
+    return res.json()
+  },
 }
 
 // ── Scripts ───────────────────────────────────────────────────────────────────

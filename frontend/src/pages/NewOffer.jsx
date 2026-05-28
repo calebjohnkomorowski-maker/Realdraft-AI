@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { FileText, Eye, Phone, Send, ChevronRight, Loader2, Pencil } from 'lucide-react'
+import { FileText, Eye, Phone, Send, ChevronRight, Loader2, Pencil, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import OfferForm from '@/components/OfferForm'
 import OfferSummary from '@/components/OfferSummary'
 import CallScript from '@/components/CallScript'
 import DocumentSend from '@/components/DocumentSend'
-import { documents as docsApi, offers as offersApi } from '@/lib/api'
+import { documents, offers as offersApi } from '@/lib/api'
+const docsApi = documents
 import { cn } from '@/lib/utils'
 import { loadSettings, agentFieldsFromSettings } from '@/lib/useSettings'
 
@@ -31,6 +32,11 @@ export default function NewOffer() {
   const [loadingOffer, setLoadingOffer]     = useState(isEditing)
   const [pdfUrl, setPdfUrl]                 = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [mlsFields, setMlsFields]           = useState(null)   // parsed from MLS upload
+  const [mlsParsing, setMlsParsing]         = useState(false)
+  const [mlsError, setMlsError]             = useState('')
+  const [mlsFile, setMlsFile]               = useState('')      // filename for display
+  const mlsInputRef = useRef(null)
 
   const stepIndex      = STEPS.findIndex(s => s.id === step)
   const isStepComplete = (id) => STEPS.findIndex(s => s.id === id) < stepIndex
@@ -43,6 +49,22 @@ export default function NewOffer() {
       .catch(err  => { console.error('Failed to load offer:', err); alert('Could not load offer.') })
       .finally(() => setLoadingOffer(false))
   }, [editId])
+
+  const handleMLSUpload = async (file) => {
+    if (!file) return
+    setMlsFile(file.name)
+    setMlsParsing(true)
+    setMlsError('')
+    try {
+      const { fields } = await documents.parseMLS(file)
+      setMlsFields(fields)
+    } catch (err) {
+      setMlsError(err.message)
+      setMlsFile('')
+    } finally {
+      setMlsParsing(false)
+    }
+  }
 
   const handleFormSubmit = async (data) => {
     const settings = loadSettings()
@@ -147,13 +169,79 @@ export default function NewOffer() {
                   <p className="text-muted-foreground text-sm mt-1">
                     {isEditing
                       ? 'Update the details below and click Regenerate PDF to apply changes.'
-                      : 'Fill in the details below — click Generate Offer PDF when ready.'
+                      : 'Upload an MLS sheet to auto-fill, or fill in manually below.'
                     }
                   </p>
                 </div>
+
+                {/* ── MLS Upload Banner ──────────────────────────────────── */}
+                {!isEditing && (
+                  <div
+                    className={`mb-6 rounded-xl border-2 border-dashed transition-colors ${
+                      mlsFields ? 'border-green-400 bg-green-50' : 'border-primary/30 bg-primary/5 hover:border-primary/60'
+                    }`}
+                  >
+                    <input
+                      ref={mlsInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={e => handleMLSUpload(e.target.files?.[0])}
+                    />
+                    {mlsParsing ? (
+                      <div className="flex items-center justify-center gap-3 py-6 text-sm text-muted-foreground">
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        <span>Reading MLS sheet — extracting fields…</span>
+                      </div>
+                    ) : mlsFields ? (
+                      <div className="flex items-center justify-between px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-green-800">MLS imported — {mlsFile}</p>
+                            <p className="text-xs text-green-700">
+                              Property, seller, utilities, and inclusions pre-filled. Review and edit below.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => mlsInputRef.current?.click()}
+                          className="text-xs text-green-700 underline shrink-0 ml-4"
+                        >
+                          Upload different file
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="w-full flex flex-col items-center gap-2 py-6 text-center"
+                        onClick={() => mlsInputRef.current?.click()}
+                      >
+                        <Upload className="w-8 h-8 text-primary/60" />
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Upload MLS Sheet</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Drop your MLS PDF here — property, seller, utilities & inclusions fill in automatically
+                          </p>
+                        </div>
+                        <span className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full">
+                          Choose PDF
+                        </span>
+                      </button>
+                    )}
+                    {mlsError && (
+                      <div className="flex items-center gap-2 px-5 pb-4 text-xs text-destructive">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {mlsError}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Offer Form — key forces re-init when MLS data arrives ── */}
                 <OfferForm
+                  key={mlsFields ? 'mls' : 'empty'}
                   onSubmit={handleFormSubmit}
-                  initialValues={existingFields}
+                  initialValues={mlsFields || existingFields}
                   submitLabel={isEditing ? 'Regenerate PDF' : 'Generate Offer PDF'}
                 />
               </div>

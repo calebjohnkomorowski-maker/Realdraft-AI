@@ -1,10 +1,23 @@
 const express = require('express');
+const multer  = require('multer');
 const router  = express.Router();
 const { fillPAAASRForm }         = require('../services/pdf');
 const { createSigningEnvelope }  = require('../services/esignature');
 const { sendOfferPackage, sendOfferSigningRequest, testEmailConnection } = require('../services/email');
 const { sendOfferReadySMS }      = require('../services/sms');
+const { parseMLSDocument }       = require('../services/claude');
 const db = require('../services/supabase');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// ── Parse MLS PDF → structured offer fields ──────────────────────────────────
+router.post('/parse-mls', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const fields = await parseMLSDocument(req.file.buffer);
+    res.json({ ok: true, fields });
+  } catch (err) { next(err); }
+});
 
 // ── Preview PDF without saving ───────────────────────────────────────────────
 router.post('/preview', async (req, res, next) => {

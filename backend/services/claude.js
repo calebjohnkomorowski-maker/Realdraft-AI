@@ -189,4 +189,59 @@ Output exactly this structure (use markdown headers):
   return response.content[0].text;
 }
 
-module.exports = { processIntakeMessage, generateCallScript };
+const MLS_EXTRACTION_PROMPT = `Extract all available fields from this MLS listing sheet.
+Return ONLY a single valid JSON object — no markdown, no explanation, no extra text.
+
+Use exactly these field names and value rules:
+
+{
+  "property_address": "full street address including city but NOT state or zip (e.g. '623 W Seven Stars Rd, Phoenixville')",
+  "property_zip": "5-digit zip code only",
+  "municipality": "township or borough name only (e.g. 'East Vincent Township')",
+  "county": "county name only, no state (e.g. 'Chester')",
+  "school_district": "school district name (e.g. 'Owen J Roberts')",
+  "tax_id": "parcel / tax ID number exactly as shown",
+  "zoning_classification": "zoning code (e.g. 'AP', 'R-1')",
+  "seller_name": "owner / seller name(s) exactly as shown",
+  "list_price": numeric list price as an integer with no $ or commas,
+  "settlement_date": "YYYY-MM-DD if a close date or settlement date is shown, else empty string",
+  "water_type": one of: "public" | "community" | "on-site" | "none"  — map 'Well' → 'on-site', 'Public Water' → 'public',
+  "sewer_type": one of: "public" | "community" | "septic" | "none"  — map 'On Site Septic' or 'Septic' → 'septic', 'Public Sewer' → 'public',
+  "financing_option": one of: "conventional" | "cash" | "fha" | "va" | "usda"  — use first/primary acceptable type; if only Cash listed → 'cash'; default 'conventional',
+  "included_items_text": "comma-separated inclusions exactly as written on the sheet",
+  "excluded_items_text": "comma-separated exclusions exactly as written on the sheet",
+  "is_pre_1978": true if year built < 1978 else false,
+  "listing_agent_name": "listing agent full name",
+  "listing_agent_phone": "listing agent phone number",
+  "listing_agent_email": "listing agent email address"
+}
+
+For any field not found in the document use: "" for strings, 0 for numbers, false for booleans.`;
+
+async function parseMLSDocument(pdfBuffer) {
+  const response = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: pdfBuffer.toString('base64'),
+          },
+        },
+        { type: 'text', text: MLS_EXTRACTION_PROMPT },
+      ],
+    }],
+  });
+
+  const text = response.content[0].text.trim();
+  // Strip markdown fences if Claude wrapped it anyway
+  const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+  return JSON.parse(cleaned);
+}
+
+module.exports = { processIntakeMessage, generateCallScript, parseMLSDocument };
