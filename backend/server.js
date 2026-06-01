@@ -19,7 +19,8 @@ app.use(helmet());
 app.use(morgan('dev'));
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,         // production Vercel URL (set in Railway env vars)
-  'https://frontend-sigma-rose-18.vercel.app', // primary Vercel deployment
+  'https://frontend-sigma-rose-18.vercel.app',                           // Vercel alias 1
+  'https://frontend-calebjohnkomorowski-1655s-projects.vercel.app',     // Vercel alias 2
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
