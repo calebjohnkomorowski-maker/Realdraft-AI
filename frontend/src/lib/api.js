@@ -1,4 +1,6 @@
-const BASE = '/api'
+// In dev, Vite proxy forwards /api → localhost:3001.
+// In production, set VITE_API_URL=https://your-backend.up.railway.app in Vercel env vars.
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
