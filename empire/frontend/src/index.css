@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #010409;
+  color: #e6edf3;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Thin scrollbars for the decision feeds. */
+.feed::-webkit-scrollbar {
+  width: 6px;
+}
+.feed::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
